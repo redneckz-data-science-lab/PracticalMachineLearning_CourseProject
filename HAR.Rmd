@@ -1,0 +1,30 @@
+---
+title: "Human Activity Recognition"
+author: "Alexander Alexandrov"
+output:
+  pdf_document:
+    latex_engine: xelatex
+mode: selfcontained
+---
+
+# Overview
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks.
+
+This project goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict the manner in which they did the exercise.
+
+The data for this project comes from this source: http://groupware.les.inf.puc-rio.br/har
+
+# Exploratory Analysis
+
+\newpage
+
+# Data Cleaning
+
+```{r, echo = F, fig.height = 3}
+library(ggplot2)
+
+\newpage
+
+# Conclusions
+

@@ -2,6 +2,7 @@
 title: "Human Activity Recognition"
 author: "Alexander Alexandrov"
 output:
+  html_document: default
   pdf_document:
     latex_engine: xelatex
 mode: selfcontained
@@ -9,7 +10,7 @@ mode: selfcontained
 
 ## Overview
 
-Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks.
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly.
 
 This project goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict the manner in which they did the exercise.
 
@@ -17,16 +18,117 @@ The data for this project comes from this source: http://groupware.les.inf.puc-r
 
 ## Exploratory Analysis
 
+```{r, message=F, warning=F}
+# Load necessary packages
+library(data.table)
+library(dplyr)
+library(caret)
+library(ggplot2)
+library(randomForest)
+```
+
+Read training data.
+
+```{r}
+# Data table is used due to performance purposes
+setwd(".")
+training <- fread("pml-training.csv")
+str(training)
+```
+
+* Some of variables contain NAs or empty strings. Such variables should be considered for interpolation or should be removed from further analysis.
+* Window can be used to aggregate and reduce training data.
+
+The approach is simple. Start from simplified model on reduced data. Check accuracy. Move to more complicated model if necessary.
+
 \newpage
 
 ## Data Cleaning
 
-```{r, echo = F, fig.height = 3}
-library(ggplot2)
+Exclude columns with lots of NAs. Such columns can't be interpolated so can't be useful in machine learning.
 
+```{r}
+predictors.na.stat <- training[, colMeans(is.na(.SD) | .SD == "")]
+# Less than 10% NAs
+non.na.predictors <- names(training)[melt(predictors.na.stat) < 0.1]
 ```
+
+Also predictors with nonrelevant information should be removed too.
+User name and timestapms can't help to classify activity in common case.
+
+```{r}
+nonrelevant.predictors <- c("V1", "user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", "cvtd_timestamp", "new_window")
+relevant.predictors <- non.na.predictors[!(non.na.predictors %in% nonrelevant.predictors)]
+relevant.training <- training[, relevant.predictors, with=FALSE]
+```
+
+## Further Exploratory Analysis
+
+Just before averaging by window outliers should be considered.
+
+```{r}
+boxplot(relevant.training[, -c("num_window", "classe"), with=FALSE])
+```
+
+According to this plot a lot of predictors contains ourliers (black circles).
+For example *Box-Cox* can be used to reduce outliers influence.
 
 \newpage
 
-## Conclusions
+## Final Data Cleaning
 
+Average measurements by window to reduce original data set.
+
+```{r}
+cleaned.training <- relevant.training[, lapply(.SD, mean), by=c("num_window", "classe")]
+# Exclude window variable
+cleaned.training <- cleaned.training[, -"num_window", with=FALSE]
+```
+
+## Data Preprocessing
+
+Exclude covariate predictors by means of correlation matrix
+
+```{r}
+cleaned.measurements <- cleaned.training[, -"classe", with=FALSE]
+predictors.cor <- abs(cor(cleaned.measurements))
+predictors.cor[upper.tri(predictors.cor, diag=TRUE)] <- 0
+
+# Correlation threshold is 0.8
+predictors.cor.coords <- which(predictors.cor > 0.8, arr.ind=TRUE)
+predictors.cor.coords.x <- unique(predictors.cor.coords[, "col"])
+predictors.cor.coords.y <- unique(predictors.cor.coords[, "row"])
+
+covariate.predictors.indices <- if (length(predictors.cor.coords.x) > length(predictors.cor.coords.y)) {
+  predictors.cor.coords.x
+} else {
+  predictors.cor.coords.y
+}
+
+covariate.predictors <- names(cleaned.measurements)[covariate.predictors.indices]
+
+reduced.training <- cleaned.training[, -covariate.predictors, with=FALSE]
+```
+
+## Random Forest
+
+This method is simple enough to get started and powerful to fit nonlinear case.
+
+```{r}
+set.seed(1234)
+rf.model.fit <- train(classe ~ ., data=reduced.training, method="rf", ntree=500, trainControl="cv", number=25, preProcess="BoxCox")
+rf.model.fit
+```
+
+## Conclusion
+
+The accuracy is greater than *0.8*. So this model works practically fine. To avoid overfitting this model can be choosen as final.
+
+## Testing
+
+```{r}
+testing <- fread("pml-testing.csv")
+predicted <- predict(rf.model.fit, newdata=testing)
+cbind(testing[, c("user_name", "cvtd_timestamp"), with=FALSE],
+      data.frame(classe=predicted))
+```

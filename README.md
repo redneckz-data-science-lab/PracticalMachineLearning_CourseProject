@@ -15,4 +15,11 @@ The test data are available here:
 
 https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
 
-The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
+
+### Files
+
+1. **HAR.Rmd** - the main file containing whole work.
+2. **HAR.pdf, HAR.html** - files generated from the main file.
+3. **pml-training.csv** - training HAR data.
+4. **pml-testing.csv** - testing HAR data.
